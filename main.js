@@ -4,10 +4,10 @@ var inputData = require('./inputData.json');
 var Genetic = require('./genetic.js');
 var app = express();
 var Utils = {
-	randomKey: function(arr) {
-		var key = Math.floor(Math.random() * arr.length);
-		return key;
-	}
+  randomKey: function(arr) {
+    var key = Math.floor(Math.random() * arr.length);
+    return key;
+  }
 };
 
 app.get('/result.js', function(request, response) {
@@ -19,24 +19,24 @@ app.get('/result.js', function(request, response) {
     mutationTries: 5,
     chanceOfMutation:  0.5,
 
-  	subjectGenerator: function() {
+    subjectGenerator: function() {
       var self = this;
-  		var shuffledDeliveries = _.shuffle(inputData.deliveries);
-  		var shelvesStatus = _.map(inputData.shelves, function(shelve) {
+      var shuffledDeliveries = _.shuffle(inputData.deliveries);
+      var shelvesStatus = _.map(inputData.shelves, function(shelve) {
         return {
           id: shelve.id,
           capacity: shelve.capacity
         }
       });
-  		
+      
       //generating subject
-  		var subject = {solution: []};
+      var subject = {solution: []};
       console.log("New subject");
 
       // dla kazdego produktu dla kazdej
       // z dostaw sprobuj przyporzadkowac polke
-  		_.each(shuffledDeliveries, function(delivery) {
-  			_.each(delivery.products, function(productId) {
+      _.each(shuffledDeliveries, function(delivery) {
+        _.each(delivery.products, function(productId) {
           
           var product = _.findWhere(inputData.products, { id: productId });
               // tylko polki z wystarczajaca iloscia wolnego miejsca
@@ -56,11 +56,11 @@ app.get('/result.js', function(request, response) {
               } else {
                 console.log("Product skipped. Not enough place");
               }
-  			});
-  		});
+        });
+      });
       subject.shelvesStatus = shelvesStatus;
-  		return subject;
-  	},
+      return subject;
+    },
 
     // wybiera [num] najlepszych
     selector: function(subjects, num) {
