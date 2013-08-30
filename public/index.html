@@ -1,0 +1,33 @@
+<html>
+<head>
+	<title></title>
+	<script src="/jquery.js"></script>
+	<script>
+		window.callback = function(res) {
+			var results = res;
+			console.log(results);
+			$(function() {
+				$.each(results.generations, function( index, generation) {
+
+					$('#generations').append('<h2># ' + (index + 1) + '</h2>');
+
+					var table = $('<table />').appendTo('#generations').append('<tr><th>Rating</th><th>TotalVolume</th><th>Penalty</th><th>Solution</th></tr>');
+					$.each(generation, function(key, item) {
+						var solution = item.solution;
+						table.append('<tr><td>' + item.rating + '</td><td>' + item.totalVolume + '</td><td>' + item.penalty + '</td><td>' + JSON.stringify(solution) + '</td></tr>');
+					})
+
+					$('#generations').append('<div class="i-' + (index) + '"></div>');
+				});
+			});
+		}
+	</script>
+	<script src="/result.js"></script>
+</head>
+<body>
+	<h1>Iterations</h1>
+	<div id="generations">
+
+	</div>
+</body>
+</html>
