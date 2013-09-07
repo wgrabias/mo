@@ -11,10 +11,10 @@
 
 					$('#generations').append('<h2># ' + (index + 1) + '</h2>');
 
-					var table = $('<table />').appendTo('#generations').append('<tr><th>Rating</th><th>TotalVolume</th><th>Penalty</th><th>Solution</th></tr>');
+					var table = $('<table />').appendTo('#generations').append('<tr><th>Generation</th><th>Rating</th><th>TotalVolume</th><th>Penalty</th><th>Exceeded</th></tr>');
 					$.each(generation, function(key, item) {
 						var solution = item.solution;
-						table.append('<tr><td>' + item.rating + '</td><td>' + item.totalVolume + '</td><td>' + item.penalty + '</td><td>' + JSON.stringify(solution) + '</td></tr>');
+						table.append('<tr><td>' + item.iteration + '</td><td>' + item.rating + '</td><td>' + item.totalVolume + '</td><td>' + item.penalty + '</td><td>' + item.exceeded + '</td></tr>');
 					})
 
 					$('#generations').append('<div class="i-' + (index) + '"></div>');

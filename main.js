@@ -18,6 +18,7 @@ app.get('/result.js', function(request, response) {
     categoryConflictPenalty: 5,
     mutationTries: 5,
     chanceOfMutation:  0.5,
+    exceededPenalty: 5,
 
     subjectGenerator: function() {
       var self = this;
@@ -46,6 +47,8 @@ app.get('/result.js', function(request, response) {
                 var key = Utils.randomKey(sufficientShelves);
                 var shelve = sufficientShelves[key];
 
+                product.uid = delivery.id + "_" + product.id;
+
                 subject.solution.push({ 
                   shelve: shelve.id,
                   product: product
@@ -72,9 +75,61 @@ app.get('/result.js', function(request, response) {
 
     reproductor: function (parents) {
       var a = parents[0],
-          b = parents[1];
+          b = parents[1],
+          c = {};
 
-      return params.subjectGenerator(); // TODO
+          var aHash = {},
+              aUIDs = [],
+              bHash = {}
+              bUIDs = [];
+          
+          _.each(a.solution, function(item) {
+            aUIDs.push(item.product.uid);
+            aHash[item.product.uid] = item;
+          });
+
+          _.each(b.solution, function(item) {
+            aUIDs.push(item.product.uid);
+            bHash[item.product.uid] = item;
+          });
+
+          var half = Math.floor(aUIDs.length/2);
+
+          var solution = [],
+              exceeded = 0;
+
+          for (var i = 0; i < half; i++) {
+            solution.push(aHash[aUIDs[i]]);
+          }
+
+          for (var i = half; i < b.length; i++) {
+            solution.push(bHash[bUIDs[i]]);
+          }
+
+          // ocen rozwiazanie & przygotuj nowy status polek
+          var shelvesStatus = _.map(inputData.shelves, function(shelve) {
+            return {
+              id: shelve.id,
+              capacity: shelve.capacity
+            }
+          });
+
+          _.each(solution, function(item) {
+            var shelve = _.findWhere(shelvesStatus, { id: item.shelve });
+            if(shelve.capacity < item.product.volume) {
+              exceeded += item.product.volume - shelve.capacity;
+            }
+            shelve.capacity -= item.product.volume;
+          });
+
+          console.log("Repoducted, exceeded: " + exceeded);
+
+
+          return {
+            solution: solution,
+            shelvesStatus: shelvesStatus,
+            exceeded: exceeded
+          }
     },
 
     subjectMutator: function(subject) {
@@ -129,14 +184,14 @@ app.get('/result.js', function(request, response) {
       });
 
       subject.totalVolume = totalVolume;
-      subject.penalty = penalties * params.categoryConflictPenalty;
+      subject.penalty = penalties * params.categoryConflictPenalty + subject.exceeded * params.exceededPenalty;
       subject.rating = subject.totalVolume - subject.penalty;
     }
   }
 
   genetic = new Genetic(params);
 
-  var result = genetic.run(20);
+  var result = genetic.run(1000);
 
   response.send('callback(' + JSON.stringify(result) + ');');
 });

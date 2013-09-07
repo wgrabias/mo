@@ -1,5 +1,6 @@
 var _ = require("underscore");
 var Genetic = function (params){
+    var iteration = 0;
     this.population = [];
     this.run = function (cycles) {
         var generations = [];
@@ -9,6 +10,7 @@ var Genetic = function (params){
         generations.push(this.population);
 
         for (var i = 1; i < cycles; i++) {
+            iteration++;
             console.log("Iteration: " + i + "/" + cycles);
             var oldPopulation = this.population;
 
@@ -37,6 +39,7 @@ var Genetic = function (params){
         var population = [];
         for (var i = 0; i < size; i++) {
             var subject = this.generateSubject();
+            subject.iteration = iteration; 
             population.push(subject);
         }
 
@@ -62,7 +65,8 @@ var Genetic = function (params){
         if(Math.random() <= params.chanceOfMutation) {
             child = this.mutate(child);
         }
-        
+        child.iteration = iteration;         
+
         return child;
     }
 
