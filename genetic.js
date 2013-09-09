@@ -40,7 +40,7 @@ var Genetic = function (params){
                 this.population.push(subject);
             }
             this.rate(this.population);
-            if(i%10 === 0) {
+            if(i%params.outputLimiter === 0) {
                 generations.push(this.exportPopulation(this.population));
             }
 
