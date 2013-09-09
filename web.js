@@ -20,7 +20,7 @@ app.get('/result.js', function(request, response) {
     mutationTries: 5,
     chanceOfMutation:  0.1,
     exceededPenalty: 5,
-    outputLimiter: 500, // wysw. co [n] iterację
+    outputLimiter: 100, // wysw. co [n] iterację
 
     subjectGenerator: function() {
       var self = this;
@@ -203,7 +203,7 @@ app.get('/result.js', function(request, response) {
 
   genetic = new Genetic(params);
 
-  var result = genetic.run(10000);
+  var result = genetic.run(1000);
 
   response.connection.setTimeout(0);
   response.send('callback(' + JSON.stringify(result) + ');');
