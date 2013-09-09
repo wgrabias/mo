@@ -9,7 +9,7 @@
 			$(function() {
 				$.each(results.generations, function( index, generation) {
 
-					$('#generations').append('<h2># ' + (index + 1) + '</h2>');
+					$('#generations').append('<h2># ' + (generation[0].iteration) + '</h2>');
 
 					var table = $('<table />').appendTo('#generations').append('<tr><th>Generation</th><th>Rating</th><th>TotalVolume</th><th>Penalty</th><th>Exceeded</th></tr>');
 					$.each(generation, function(key, item) {
@@ -19,6 +19,14 @@
 
 					$('#generations').append('<div class="i-' + (index) + '"></div>');
 				});
+
+					$('#winner').append(JSON.stringify(results.winner));
+
+
+				// $.each(results.log, function(index, log) {
+				// 	$('#log').append('<div>' + log + '</div>');
+				// });
+
 			});
 		}
 	</script>
@@ -26,8 +34,10 @@
 </head>
 <body>
 	<h1>Iterations</h1>
-	<div id="generations">
-
-	</div>
+	<table><tr style="vertical-align: top">
+		<td id="generations"></td>
+		<td id="winner"></td>
+		<td id="log"></td>
+	</tr></table>
 </body>
 </html>
