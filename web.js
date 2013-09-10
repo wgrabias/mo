@@ -1,6 +1,5 @@
 var express = require("express");
 var _ = require("underscore");
-var inputData = require('./inputData.json');
 var Genetic = require('./genetic.js');
 var app = express();
 var Utils = {
@@ -10,17 +9,20 @@ var Utils = {
   }
 };
 
-app.get('/result.js', function(request, response) {
+app.get('/result.json', function(request, response) {
+  var req = request.query;
+  var inputData = req.inputData;
+
   var params = {
-    populationSize: 10,
-    reproductiveParents: 5,
-    promotedParents: 2,
-    newSubjects: 5,
-    categoryConflictPenalty: 5,
-    mutationTries: 5,
-    chanceOfMutation:  0.1,
-    exceededPenalty: 5,
-    outputLimiter: 100, // wysw. co [n] iterację
+    populationSize: Number(inputData.params.populationSize),
+    reproductiveParents: Number(inputData.params.reproductiveParents),
+    promotedParents: Number(inputData.params.promotedParents),
+    newSubjects: Number(inputData.params.newSubjects),
+    categoryConflictPenalty: Number(inputData.params.categoryConflictPenalty),
+    mutationTries: Number(inputData.params.mutationTries),
+    chanceOfMutation:  Number(inputData.params.chanceOfMutation),
+    exceededPenalty: Number(inputData.params.exceededPenalty),
+    outputLimiter: Math.floor(req.cycles / Number(inputData.params.outputLimit)) || 1, // wysw. max x iteracji
 
     subjectGenerator: function() {
       var self = this;
@@ -28,7 +30,7 @@ app.get('/result.js', function(request, response) {
       var shelvesStatus = _.map(inputData.shelves, function(shelve) {
         return {
           id: shelve.id,
-          capacity: shelve.capacity
+          capacity: Number(shelve.capacity)
         }
       });
       
@@ -43,7 +45,7 @@ app.get('/result.js', function(request, response) {
           
           var product = _.findWhere(inputData.products, { id: productId });
               // tylko polki z wystarczajaca iloscia wolnego miejsca
-              sufficientShelves = _.filter(shelvesStatus, function(shelve){ return shelve.capacity >= product.volume });
+              sufficientShelves = _.filter(shelvesStatus, function(shelve){ return Number(shelve.capacity) >= Number(product.volume) });
 
               if(sufficientShelves.length > 0) {
                 var key = Utils.randomKey(sufficientShelves);
@@ -57,13 +59,13 @@ app.get('/result.js', function(request, response) {
                 });
 
                 console.log('Put product: #' + product.id + ' on shelve: #' + shelve.id);
-                shelve.capacity -= product.volume;
+                shelve.capacity -= Number(product.volume);
               } else {
                 console.log("Not enough place");
                 var key = Utils.randomKey(shelvesStatus);
                 var shelve = shelvesStatus[key];
 
-                subject.exceeded += product.volume - shelve.capacity; 
+                subject.exceeded += Number(product.volume) - Number(shelve.capacity); 
 
                 product.uid = delivery.id + "_" + product.id;
 
@@ -73,7 +75,7 @@ app.get('/result.js', function(request, response) {
                 });
 
                 console.log('Put product: #' + product.id + ' on shelve: #' + shelve.id);
-                shelve.capacity -= product.volume;
+                shelve.capacity -= Number(product.volume);
               }
         });
       });
@@ -84,12 +86,13 @@ app.get('/result.js', function(request, response) {
     // wybiera [num] najlepszych
     selector: function(subjects, num) {
       var sorted = _.sortBy(subjects, function (subject) {
-        return -subject.rating;
+        return -1 * Number(subject.rating);
       });
       return sorted.slice(0, num);
     },
 
     reproductor: function (parents) {
+
       var a = parents[0],
           b = parents[1],
           c = {};
@@ -126,16 +129,16 @@ app.get('/result.js', function(request, response) {
           var shelvesStatus = _.map(inputData.shelves, function(shelve) {
             return {
               id: shelve.id,
-              capacity: shelve.capacity
+              capacity: Number(shelve.capacity)
             }
           });
 
           _.each(solution, function(item) {
             var shelve = _.findWhere(shelvesStatus, { id: item.shelve });
-            if(shelve.capacity < item.product.volume) {
-              exceeded += item.product.volume - shelve.capacity;
+            if(Number(shelve.capacity) < Number(item.product.volume)) {
+              exceeded += Number(item.product.volume) - Number(shelve.capacity);
             }
-            shelve.capacity -= item.product.volume;
+            shelve.capacity -= Number(item.product.volume);
           });
 
           //console.log("Repoducted, exceeded: " + exceeded);
@@ -157,15 +160,15 @@ app.get('/result.js', function(request, response) {
             aShelve = _.findWhere(subject.shelvesStatus, {id: a.shelve}),
             bShelve = _.findWhere(subject.shelvesStatus, {id: b.shelve}),
 
-            aShelveCapacity = aShelve.capacity + a.product.volume,
-            bShelveCapacity = bShelve.capacity + b.product.volume 
+            aShelveCapacity = Number(aShelve.capacity) + Number(a.product.volume),
+            bShelveCapacity = Number(bShelve.capacity) + Number(b.product.volume) 
 
-        if (aShelveCapacity > b.product.volume && bShelveCapacity > a.product.volume) {
+        if (aShelveCapacity > Number(b.product.volume) && bShelveCapacity > Number(a.product.volume)) {
             var tmp = a.shelve;
             a.shelve = b.shelve;
             b.shelve = tmp;
-            aShelve.capacity = aShelveCapacity - b.product.volume;
-            bShelve.capacity = bShelveCapacity - a.product.volume;
+            aShelve.capacity = aShelveCapacity - Number(b.product.volume);
+            bShelve.capacity = bShelveCapacity - Number(a.product.volume);
             
             //console.log('Mutation success!');
             return subject;
@@ -180,7 +183,7 @@ app.get('/result.js', function(request, response) {
           penalties = 0,
           shlevesCategories = {};
       _.each(subject.solution, function (item) {
-        totalVolume += item.product.volume;
+        totalVolume += Number(item.product.volume);
 
         if (shlevesCategories[item.shelve]) {
           if(!_.contains(shlevesCategories[item.shelve], item.product.category)) { 
@@ -203,12 +206,11 @@ app.get('/result.js', function(request, response) {
 
   genetic = new Genetic(params);
 
-  var result = genetic.run(1000);
+  var result = genetic.run(req.cycles);
 
   response.connection.setTimeout(0);
-  response.send('callback(' + JSON.stringify(result) + ');');
+  response.send(JSON.stringify(result));
 });
-
 app.use(express.static(__dirname + '/public'));
 
 var port = process.env.PORT || 5000;

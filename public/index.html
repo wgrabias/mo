@@ -3,41 +3,64 @@
 	<title></title>
 	<script src="/jquery.js"></script>
 	<script>
-		window.callback = function(res) {
-			var results = res;
-			console.log(results);
+
 			$(function() {
-				$.each(results.generations, function( index, generation) {
 
-					$('#generations').append('<h2># ' + (generation[0].iteration) + '</h2>');
+				$.ajax({
+					  dataType: "json",
+					  url: '/inputData.json',
+					  success: function(data) {
+					  	console.log(data);
+					  	$('#inputData').val(JSON.stringify(data, null, 4));
+					  }
+				})
 
-					var table = $('<table />').appendTo('#generations').append('<tr><th>Generation</th><th>Rating</th><th>TotalVolume</th><th>Penalty</th><th>Exceeded</th></tr>');
-					$.each(generation, function(key, item) {
-						var solution = item.solution;
-						table.append('<tr><td>' + item.iteration + '</td><td>' + item.rating + '</td><td>' + item.totalVolume + '</td><td>' + item.penalty + '</td><td>' + item.exceeded + '</td></tr>');
-					})
+				$('#send').click(function() {
+					$.ajax({
+					  dataType: "json",
+					  url: '/result.json',
+					  data: {
+					  	reptoductor: $('#reptoductor').val(),
+					  	inputData: $.parseJSON( $('#inputData').val()),
+					  	cycles: $('#iterations').val(),
+					  },
+					  success: function (results) {
+					  	$('#result').html('<h1>Result</h1><table><tr style="vertical-align: top"><td><h2>Iterations</h2><div id="generations"></div></td><td><h2>Winner</h2><div id="winner"></div></td></tr></table>');
+						$.each(results.generations, function( index, generation) {
 
-					$('#generations').append('<div class="i-' + (index) + '"></div>');
+							$('#generations').append('<h2># ' + (generation[0].iteration) + '</h2>');
+
+							var table = $('<table />').appendTo('#generations').append('<tr><th>Generation</th><th>Rating</th><th>TotalVolume</th><th>Penalty</th><th>Exceeded</th></tr>');
+							$.each(generation, function(key, item) {
+								var solution = item.solution;
+								table.append('<tr><td>' + item.iteration + '</td><td>' + item.rating + '</td><td>' + item.totalVolume + '</td><td>' + item.penalty + '</td><td>' + item.exceeded + '</td></tr>');
+							})
+
+							$('#generations').append('<div class="i-' + (index) + '"></div>');
+						});
+
+						$('#winner').append(JSON.stringify(results.winner));
+					}
 				});
-
-					$('#winner').append(JSON.stringify(results.winner));
-
+			});
 
 				// $.each(results.log, function(index, log) {
 				// 	$('#log').append('<div>' + log + '</div>');
 				// });
 
-			});
-		}
+		});
 	</script>
-	<script src="/result.js"></script>
 </head>
 <body>
-	<h1>Iterations</h1>
-	<table><tr style="vertical-align: top">
-		<td id="generations"></td>
-		<td id="winner"></td>
-		<td id="log"></td>
-	</tr></table>
+	<div>
+		<lable>Input data</label>
+		<textarea style="width:100%; height: 500px;" id="inputData"></textarea>
+		<lable>Num of Iterations</label>
+		<input type="number" id="iterations" value="1000" />
+		<input type="submit" id="send" value="calculate" />
+	</div>
+
+	<div id="result"></div>
+
 </body>
 </html>
