@@ -19,9 +19,9 @@ app.get('/result.json', function(request, response) {
     promotedParents: Number(inputData.params.promotedParents),
     newSubjects: Number(inputData.params.newSubjects),
     categoryConflictPenalty: Number(inputData.params.categoryConflictPenalty),
-    mutationTries: Number(inputData.params.mutationTries),
     chanceOfMutation:  Number(inputData.params.chanceOfMutation),
     exceededPenalty: Number(inputData.params.exceededPenalty),
+    weightExceededPenalty: Number(inputData.params.weightExceededPenalty),
     outputLimiter: Math.floor(req.cycles / Number(inputData.params.outputLimit)) || 1, // wysw. max x iteracji
 
     subjectGenerator: function() {
@@ -30,12 +30,13 @@ app.get('/result.json', function(request, response) {
       var shelvesStatus = _.map(inputData.shelves, function(shelve) {
         return {
           id: shelve.id,
-          capacity: Number(shelve.capacity)
+          capacity: Number(shelve.capacity),
+          strength: Number(shelve.strength)
         }
       });
       
       //generating subject
-      var subject = {solution: [], exceeded: 0};
+      var subject = {solution: [], exceeded: 0, weightExceeded: 0};
       console.log("New subject");
 
       // dla kazdego produktu dla kazdej
@@ -44,41 +45,36 @@ app.get('/result.json', function(request, response) {
         _.each(delivery.products, function(productId) {
           
           var product = _.findWhere(inputData.products, { id: productId });
-              // tylko polki z wystarczajaca iloscia wolnego miejsca
-              sufficientShelves = _.filter(shelvesStatus, function(shelve){ return Number(shelve.capacity) >= Number(product.volume) });
+          // tylko polki z wystarczajaca iloscia wolnego miejsca
+          sufficientShelves = _.filter(shelvesStatus, function(shelve){ return Number(shelve.capacity) >= Number(product.volume) });
 
-              if(sufficientShelves.length > 0) {
-                var key = Utils.randomKey(sufficientShelves);
-                var shelve = sufficientShelves[key];
+          if(sufficientShelves.length > 0) {
+            var key = Utils.randomKey(sufficientShelves);
+            var shelve = sufficientShelves[key];
+          } else{  
+            var key = Utils.randomKey(shelvesStatus);
+            var shelve = shelvesStatus[key];
+            subject.exceeded += Number(product.volume) - Number(shelve.capacity); 
+          }
 
-                product.uid = delivery.id + "_" + product.id;
+          if(shelve.strength < Number(product.weight)) {
+            subject.weightExceeded += Number(product.weight) - Number(shelve.strength)
+          }
 
-                subject.solution.push({ 
-                  shelve: shelve.id,
-                  product: product
-                });
+          product.uid = delivery.id + "_" + product.id;
 
-                console.log('Put product: #' + product.id + ' on shelve: #' + shelve.id);
-                shelve.capacity -= Number(product.volume);
-              } else {
-                console.log("Not enough place");
-                var key = Utils.randomKey(shelvesStatus);
-                var shelve = shelvesStatus[key];
+          subject.solution.push({ 
+            shelve: shelve.id,
+            product: product
+          });
 
-                subject.exceeded += Number(product.volume) - Number(shelve.capacity); 
-
-                product.uid = delivery.id + "_" + product.id;
-
-                subject.solution.push({ 
-                  shelve: shelve.id,
-                  product: product
-                });
-
-                console.log('Put product: #' + product.id + ' on shelve: #' + shelve.id);
-                shelve.capacity -= Number(product.volume);
-              }
+          console.log('Put product: #' + product.id + ' on shelve: #' + shelve.id);
+          
+          shelve.strength -= Number(product.weight);
+          shelve.capacity -= Number(product.volume);
         });
       });
+
       subject.shelvesStatus = shelvesStatus;
       return subject;
     },
@@ -115,7 +111,8 @@ app.get('/result.json', function(request, response) {
           var half = Math.floor(aUIDs.length/2);
 
           var solution = [],
-              exceeded = 0;
+              exceeded = 0,
+              weightExceeded = 0;
 
           for (var i = 0; i < half; i++) {
             solution.push(aHash[aUIDs[i]]);
@@ -129,7 +126,8 @@ app.get('/result.json', function(request, response) {
           var shelvesStatus = _.map(inputData.shelves, function(shelve) {
             return {
               id: shelve.id,
-              capacity: Number(shelve.capacity)
+              capacity: Number(shelve.capacity),
+              strength: Number(shelve.strength)
             }
           });
 
@@ -138,22 +136,24 @@ app.get('/result.json', function(request, response) {
             if(Number(shelve.capacity) < Number(item.product.volume)) {
               exceeded += Number(item.product.volume) - Number(shelve.capacity);
             }
+            
+            if(shelve.strength < Number(item.product.weight)) {
+              weightExceeded += Number(item.product.weight) - Number(shelve.strength)
+            }
+
             shelve.capacity -= Number(item.product.volume);
+            shelve.strength -= Number(item.product.weight);
           });
-
-          //console.log("Repoducted, exceeded: " + exceeded);
-
 
           return {
             solution: solution,
             shelvesStatus: shelvesStatus,
-            exceeded: exceeded
+            exceeded: exceeded,
+            weightExceeded: weightExceeded
           }
     },
 
     subjectMutator: function(subject) {
-
-      for (var i=0; i < this.mutationTries; i++) {
         var a = subject.solution[Utils.randomKey(subject.solution)],
             b = subject.solution[Utils.randomKey(subject.solution)],
 
@@ -162,20 +162,18 @@ app.get('/result.json', function(request, response) {
 
             aShelveCapacity = Number(aShelve.capacity) + Number(a.product.volume),
             bShelveCapacity = Number(bShelve.capacity) + Number(b.product.volume) 
+            aShelveStrength = Number(aShelve.strength) + Number(a.product.weight),
+            bShelveStrength = Number(bShelve.strength) + Number(b.product.weight) 
 
-        if (aShelveCapacity > Number(b.product.volume) && bShelveCapacity > Number(a.product.volume)) {
-            var tmp = a.shelve;
-            a.shelve = b.shelve;
-            b.shelve = tmp;
-            aShelve.capacity = aShelveCapacity - Number(b.product.volume);
-            bShelve.capacity = bShelveCapacity - Number(a.product.volume);
-            
-            //console.log('Mutation success!');
-            return subject;
-        }
-      }
+        var tmp = a.shelve;
 
-      console.log("Mutation tries failed.");
+        a.shelve = b.shelve;
+        b.shelve = tmp;
+        aShelve.capacity = aShelveCapacity - Number(b.product.volume);
+        bShelve.capacity = bShelveCapacity - Number(a.product.volume);
+        aShelve.strength = aShelveStrength - Number(b.product.weight);
+        bShelve.strength = bShelveStrength - Number(a.product.weight);
+
       return subject;
     },
     subjectEvaluator: function(subject) {
@@ -194,13 +192,16 @@ app.get('/result.json', function(request, response) {
 
        _.each(shlevesCategories, function (shelve) {
         _.each(inputData.constraints, function (constraint) {
-            penalties +=  _.intersection(shelve, constraint).length - 1;
+            penalties +=  _.intersection(shelve, constraint).length > 1 ? 1 : 0;
         });
       });
 
+
       subject.totalVolume = totalVolume;
-      subject.penalty = penalties * params.categoryConflictPenalty + subject.exceeded * params.exceededPenalty;
+      subject.penalty = penalties * Number(params.categoryConflictPenalty) + subject.exceeded * Number(params.exceededPenalty) + Number(params.weightExceededPenalty) * subject.weightExceeded;
       subject.rating = subject.totalVolume - subject.penalty;
+
+      console.log(params.weightExceededPenalty,  subject.weightExceeded);
     }
   }
 
